@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<!-- Le document HTML commence ici et la langue est en français -->
+
+<head>
+    <!-- Encodage des caractères pour afficher les accents correctement -->
+    <meta charset="UTF-8">
+    <!-- Titre de la page qui s'affiche dans l'onglet du navigateur -->
+    <title>FITS - Gestion Boutique</title>
+</head>
+
+<body>
+    <!-- La section <style> contient les règles CSS de mise en page -->
+    <style.delete-button {
+  background-color: red; /* mets ce que tu veux */
+}
+.quantity-button {
+  background-color: blue; /* mets ce que tu veux */
+}>
+        /* Centre les titres de la page */
+        h1 {
+            text-align: center;
+        }
+
+        h2 {
+            text-align: center;
+        }
+
+        h3 {
+            text-align: center;
+        }
+
+        table {
+            width: 80%;
+            border-collapse: collapse;
+        }
+
+        /* Style des cellules du tableau */
+        th,
+        td {
+            padding: 10px;
+            text-align: left;
+            border: 1px solid black;
+        }
+
+        /* En-tête du tableau avec fond bleu clair */
+        th {
+            background-color: lightblue;
+        }
+
+        /* Style des champs de saisie */
+        input {
+            padding: 8px;
+        }
+
+        /* Style du bouton de formulaire */
+        button {
+            background-color: blue;
+            color: white;
+            padding: 10px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .delete-button {
+            background-color: red;
+        }
+
+        /* Met en évidence les produits sans stock et les produits en stock faible. */
+        .stock-empty {
+            color: red;
+            font-weight: bold;
+        }
+
+        .stock-low {
+            color: orange;
+            font-weight: bold;
+        }
+    </style>
+
+    <!-- Titre principal de la page -->
+    <h1>Bienvenue chez FITS</h1>
+
+    <!-- Sous-titre de la boutique -->
+    <h2>Gestion de la boutique</h2>
+
+    <!-- Titre du stock disponible -->
+    <h3>stock de la boutique FITS</h3>
+
+    <!-- La recherche filtre les lignes du tableau à partir du nom du produit. -->
+    <label for="product-search">Rechercher un produit par nom :</label>
+    <input id="product-search" type="search" placeholder="Ex : Routeur">
+
+    <!-- Le tableau affiche la liste des produits en stock -->
+    <table border="1">
+        <!-- Une ligne de titre pour les colonnes du tableau -->
+        <tr>
+            <th>Produit</th>
+            <th>Prix(MRU)</th>
+            <th>Quantité</th>
+            <th>Réference</th>
+            <th>Action</th>
+        </tr>
+
+        <!-- <th> sert à créer une cellule d'en-tête (colonne) -->
+        <!-- <td> sert à créer une cellule de contenu (ligne) -->
+
+        <!-- Première ligne du tableau : un produit avec son prix et sa quantité -->
+        <tbody id="product-rows">
+            <tr>
+                <td>Caméra de surveillance</td>
+                <td>1500</td>
+                <td>10</td>
+                <td></td>
+                <td></td>
+            </tr>
+
+            <tr>
+                <td>Routeur Wi-Fi</td>
+                <td>800</td>
+                <td>5</td>
+                <td></td>
+                <td></td>
+            </tr>
+
+            <tr>
+                <td>Cable réseau</td>
+                <td>100</td>
+                <td>20</td>
+                <td></td>
+                <td></td>
+            </tr>
+
+            <tr>
+                <td>Suiwitch réseau</td>
+                <td>1200</td>
+                <td>4</td>
+                <td></td>
+                <td></td>
+            </tr>
+
+            <tr>
+                <td>Clé USB</td>
+                <td>200</td>
+                <td>15</td>
+                <td></td>
+                <td></td>
+            </tr>
+
+            <tr>
+                <td>Ordinateur portable</td>
+                <td>9000</td>
+                <td>50</td>
+                <td></td>
+                <td></td>
+            </tr>
+
+            <tr>
+                <td>Disque dur</td>
+                <td>2500</td>
+                <td>30</td>
+                <td></td>
+                <td></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- Titre du formulaire d'ajout de produit -->
+    <h3>Ajouter un nouveau produit</h3>
+
+    <!-- <form> permet de créer un formulaire pour recueillir des informations -->
+    <form id="product-form">
+        <!-- <label> affiche le nom du champ -->
+        <label for="product-name">Nom du produit :</label>
+        <!-- <input> permet de saisir du texte -->
+        <input id="product-name" type="text" placeholder="Ex : Caméra IP" required>
+        <br><br>
+
+        <label for="product-price">Prix (MRU) :</label>
+        <input id="product-price" type="number" min="0" placeholder="Ex : 1500" required>
+        <br><br>
+
+        <label for="product-quantity">Quantité :</label>
+        <input id="product-quantity" type="number" min="0" step="1" placeholder="Ex : 10" required>
+        <br><br>
+
+        <label for="product-reference">Référence :</label>
+        <input id="product-reference" type="text" placeholder="Ex : CAM-001" required>
+        <br><br>
+
+        <!-- Bouton qui permet d'ajouter un produit sans envoyer les données -->
+        <button type="submit">Ajouter le produit</button>
+    </form>
+
+    <script>
+        // Récupère les éléments utilisés par les fonctions de gestion du stock.
+        const productForm = document.getElementById("product-form");
+        const productRows = document.getElementById("product-rows");
+        const productSearch = document.getElementById("product-search");
+        // Une quantité de 1 à 5 inclus est considérée comme un stock faible.
+        const lowStockThreshold = 5;
+
+        // Ignore les majuscules et les accents pour rendre la recherche plus souple.
+        function normalizeText(text) {
+            return text.toLocaleLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        }
+
+        // Affiche uniquement les produits dont le nom contient le texte recherché.
+        function filterProducts() {
+            const searchTerm = normalizeText(productSearch.value.trim());
+
+            productRows.querySelectorAll("tr").forEach((row) => {
+                row.hidden = !normalizeText(row.cells[0].textContent).includes(searchTerm);
+            });
+        }
+
+        // Remplace la quantité d'une cellule par des commandes +/- et sa valeur.
+        function addQuantityControls(cell, initialQuantity) {
+            const quantity = Number(initialQuantity);
+            if (!Number.isInteger(quantity) || quantity < 0) {
+                throw new Error("La quantité doit être un entier positif ou nul.");
+            }
+
+            cell.textContent = "";
+            const decreaseButton = document.createElement("button");
+            decreaseButton.type = "button";
+            decreaseButton.textContent = "-";
+            decreaseButton.setAttribute("aria-label", "Diminuer la quantité");
+
+            const quantityValue = document.createElement("span");
+            quantityValue.textContent = String(quantity);
+            quantityValue.style.margin = "0 8px";
+
+            // Met à jour la couleur selon la quantité actuelle.
+            const updateStockStatus = (currentQuantity) => {
+                quantityValue.classList.toggle("stock-empty", currentQuantity === 0);
+                quantityValue.classList.toggle("stock-low", currentQuantity > 0 && currentQuantity <= lowStockThreshold);
+            };
+
+            const increaseButton = document.createElement("button");
+            increaseButton.type = "button";
+            increaseButton.textContent = "+";
+            increaseButton.setAttribute("aria-label", "Augmenter la quantité");
+
+            // Modifie la quantité sans autoriser de valeur négative.
+            const updateQuantity = (change) => {
+                const currentQuantity = Number(quantityValue.textContent);
+                const nextQuantity = currentQuantity + change;
+                if (nextQuantity < 0) {
+                    return;
+                }
+
+                quantityValue.textContent = String(nextQuantity);
+                decreaseButton.disabled = nextQuantity === 0;
+                updateStockStatus(nextQuantity);
+            };
+
+            decreaseButton.addEventListener("click", () => updateQuantity(-1));
+            increaseButton.addEventListener("click", () => updateQuantity(1));
+            decreaseButton.disabled = quantity === 0;
+            updateStockStatus(quantity);
+            cell.append(decreaseButton, quantityValue, increaseButton);
+        }
+
+        // Ajoute un bouton de suppression qui demande une confirmation avant d'agir.
+        function addDeleteButton(row) {
+            const actionCell = row.cells[4];
+            const deleteButton = document.createElement("button");
+            deleteButton.type = "button";
+            deleteButton.textContent = "Supprimer";
+            deleteButton.classList.add("delete-button");
+            deleteButton.addEventListener("click", () => {
+                const productName = row.cells[0].textContent;
+                if (window.confirm(`Voulez-vous vraiment supprimer « ${productName} » ?`)) {
+                    row.remove();
+                }
+            });
+            actionCell.appendChild(deleteButton);
+        }
+
+        // Initialise les commandes de quantité et de suppression des produits existants.
+        productRows.querySelectorAll("tr").forEach((row) => {
+            addQuantityControls(row.cells[2], row.cells[2].textContent.trim());
+            addDeleteButton(row);
+        });
+        // Actualise les résultats à chaque saisie dans le champ de recherche.
+        productSearch.addEventListener("input", filterProducts);
+
+        // Ajoute une nouvelle ligne au tableau lors de l'envoi du formulaire.
+        productForm.addEventListener("submit", (event) => {
+            // Empêche le rechargement de la page par défaut lors de l'envoi.
+            event.preventDefault();
+
+            // Lit et nettoie les valeurs saisies dans le formulaire.
+            const name = document.getElementById("product-name").value.trim();
+            const price = document.getElementById("product-price").value;
+            const quantity = document.getElementById("product-quantity").value;
+            const reference = document.getElementById("product-reference").value.trim();
+            const row = document.createElement("tr");
+
+            // Crée les cellules du nom et du prix.
+            [name, price].forEach((value) => {
+                const cell = document.createElement("td");
+                cell.textContent = value;
+                row.appendChild(cell);
+            });
+
+            // Ajoute la quantité avec les mêmes commandes et couleurs que les autres produits.
+            const quantityCell = document.createElement("td");
+            addQuantityControls(quantityCell, quantity);
+            row.appendChild(quantityCell);
+
+            // Ajoute la référence et l'action de suppression.
+            const referenceCell = document.createElement("td");
+            referenceCell.textContent = reference;
+            row.appendChild(referenceCell);
+
+            const actionCell = document.createElement("td");
+            row.appendChild(actionCell);
+            addDeleteButton(row);
+            productRows.appendChild(row);
+            // Réapplique la recherche, vide le formulaire puis replace le curseur sur le nom.
+            filterProducts();
+            productForm.reset();
+            document.getElementById("product-name").focus();
+        });
+    </script>
+
+</body>
+
+  </html>
+  <script>
+        // Récupère les éléments utilisés par les fonctions de gestion du stock.
+        const productForm = document.getElementById("product-form");
+        const productRows = document.getElementById("product-rows");
+        const productSearch = document.getElementById("product-search");
+        // Une quantité de 1 à 5 inclus est considérée comme un stock faible.
+        const lowStockThreshold = 5;
+
+        // Ignore les majuscules et les accents pour rendre la recherche plus souple.
+        function normalizeText(text) {
+            return text.toLocaleLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        }
+
+        // Affiche uniquement les produits dont le nom contient le texte recherché.
+        function filterProducts() {
+            const searchTerm = normalizeText(productSearch.value.trim());
+
+            productRows.querySelectorAll("tr").forEach((row) => {
+                row.hidden = !normalizeText(row.cells[0].textContent).includes(searchTerm);
+            });
+        }
+
+        // Remplace la quantité d'une cellule par des commandes +/- et sa valeur.
+        function addQuantityControls(cell, initialQuantity) {
+            const quantity = Number(initialQuantity);
+            if (!Number.isInteger(quantity) || quantity < 0) {
+                throw new Error("La quantité doit être un entier positif ou nul.");
+            }
+
+            cell.textContent = "";
+            const decreaseButton = document.createElement("button");
+            decreaseButton.type = "button";
+            decreaseButton.textContent = "-";
+            decreaseButton.setAttribute("aria-label", "Diminuer la quantité");
+
+            const quantityValue = document.createElement("span");
+            quantityValue.textContent = String(quantity);
+            quantityValue.style.margin = "0 8px";
+
+            // Met à jour la couleur selon la quantité actuelle.
+            const updateStockStatus = (currentQuantity) => {
+                quantityValue.classList.toggle("stock-empty", currentQuantity === 0);
+                quantityValue.classList.toggle("stock-low", currentQuantity > 0 && currentQuantity <= lowStockThreshold);
+            };
+
+            const increaseButton = document.createElement("button");
+            increaseButton.type = "button";
+            increaseButton.textContent = "+";
+            increaseButton.setAttribute("aria-label", "Augmenter la quantité");
+
+            // Modifie la quantité sans autoriser de valeur négative.
+            const updateQuantity = (change) => {
+                const currentQuantity = Number(quantityValue.textContent);
+                const nextQuantity = currentQuantity + change;
+                if (nextQuantity < 0) {
+                    return;
+                }
+
+                quantityValue.textContent = String(nextQuantity);
+                decreaseButton.disabled = nextQuantity === 0;
+                updateStockStatus(nextQuantity);
+            };
+
+            decreaseButton.addEventListener("click", () => updateQuantity(-1));
+            increaseButton.addEventListener("click", () => updateQuantity(1));
+            decreaseButton.disabled = quantity === 0;
+            updateStockStatus(quantity);
+            cell.append(decreaseButton, quantityValue, increaseButton);
+        }
+
+        // Ajoute un bouton de suppression qui demande une confirmation avant d'agir.
+        function addDeleteButton(row) {
+            const actionCell = row.cells[4];
+            const deleteButton = document.createElement("button");
+            deleteButton.type = "button";
+            deleteButton.textContent = "Supprimer";
+            deleteButton.classList.add("delete-button");
+            deleteButton.addEventListener("click", () => {
+                const productName = row.cells[0].textContent;
+                if (window.confirm(`Voulez-vous vraiment supprimer « ${productName} » ?`)) {
+                    row.remove();
+                }
+            });
+            actionCell.appendChild(deleteButton);
+        }
+
+        // Initialise les commandes de quantité et de suppression des produits existants.
+        productRows.querySelectorAll("tr").forEach((row) => {
+            addQuantityControls(row.cells[2], row.cells[2].textContent.trim());
+            addDeleteButton(row);
+        });
+        // Actualise les résultats à chaque saisie dans le champ de recherche.
+        productSearch.addEventListener("input", filterProducts);
+
+        // Ajoute une nouvelle ligne au tableau lors de l'envoi du formulaire.
+        productForm.addEventListener("submit", (event) => {
+            // Empêche le rechargement de la page par défaut lors de l'envoi.
+            event.preventDefault();
+
+            // Lit et nettoie les valeurs saisies dans le formulaire.
+            const name = document.getElementById("product-name").value.trim();
+            const price = document.getElementById("product-price").value;
+            const quantity = document.getElementById("product-quantity").value;
+            const reference = document.getElementById("product-reference").value.trim();
+            const row = document.createElement("tr");
+
+            // Crée les cellules du nom et du prix.
+            [name, price].forEach((value) => {
+                const cell = document.createElement("td");
+                cell.textContent = value;
+                row.appendChild(cell);
+            });
+
+            // Ajoute la quantité avec les mêmes commandes et couleurs que les autres produits.
+            const quantityCell = document.createElement("td");
+            addQuantityControls(quantityCell, quantity);
+            row.appendChild(quantityCell);
+
+            // Ajoute la référence et l'action de suppression.
+            const referenceCell = document.createElement("td");
+            referenceCell.textContent = reference;
+            row.appendChild(referenceCell);
+
+            const actionCell = document.createElement("td");
+            row.appendChild(actionCell);
+            addDeleteButton(row);
+            productRows.appendChild(row);
+            // Réapplique la recherche, vide le formulaire puis replace le curseur sur le nom.
+            filterProducts();
+            productForm.reset();
+            document.getElementById("product-name").focus();
+        });
+    </script>
+    <script>
+        const productForm = document.getElementById("product-form");
+        const productRows = document.getElementById("product-rows");
+        const productSearch = document.getElementById("product-search");
+
+        function normalizeText(text) {
+            return text.toLocaleLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        }
+
+        function filterProducts() {
+            const searchTerm = normalizeText(productSearch.value.trim());
+
+            productRows.querySelectorAll("tr").forEach((row) => {
+                row.hidden = !normalizeText(row.cells[0].textContent).includes(searchTerm);
+            });
+        }
+
+        function addQuantityControls(cell, initialQuantity) {
+            const quantity = Number(initialQuantity);
+            if (!Number.isInteger(quantity) || quantity < 0) {
+                throw new Error("La quantité doit être un entier positif ou nul.");
+            }
+
+            cell.textContent = "";
+            const decreaseButton = document.createElement("button");
+            decreaseButton.type = "button";
+            decreaseButton.textContent = "-";
+            decreaseButton.setAttribute("aria-label", "Diminuer la quantité");
+
+            const quantityValue = document.createElement("span");
+            quantityValue.textContent = String(quantity);
+            quantityValue.style.margin = "0 8px";
+
+            const increaseButton = document.createElement("button");
+            increaseButton.type = "button";
+            increaseButton.textContent = "+";
+            increaseButton.setAttribute("aria-label", "Augmenter la quantité");
+
+            const updateQuantity = (change) => {
+                const currentQuantity = Number(quantityValue.textContent);
+                const nextQuantity = currentQuantity + change;
+                if (nextQuantity < 0) {
+                    return;
+                }
+
+                quantityValue.textContent = String(nextQuantity);
+                decreaseButton.disabled = nextQuantity === 0;
+            };
+
+            decreaseButton.addEventListener("click", () => updateQuantity(-1));
+            increaseButton.addEventListener("click", () => updateQuantity(1));
+            decreaseButton.disabled = quantity === 0;
+            cell.append(decreaseButton, quantityValue, increaseButton);
+        }
+
+        function addDeleteButton(row) {
+            const actionCell = row.cells[4];
+            const deleteButton = document.createElement("button");
+            deleteButton.type = "button";
+            deleteButton.textContent = "Supprimer";
+            deleteButton.addEventListener("click", () => {
+                const productName = row.cells[0].textContent;
+                if (window.confirm(`Voulez-vous vraiment supprimer « ${productName} » ?`)) {
+                    row.remove();
+                }
+            });
+            actionCell.appendChild(deleteButton);
+        }
+
+        productRows.querySelectorAll("tr").forEach((row) => {
+            addQuantityControls(row.cells[2], row.cells[2].textContent.trim());
+            addDeleteButton(row);
+        });
+        productSearch.addEventListener("input", filterProducts);
+
+        productForm.addEventListener("submit", (event) => {
+            event.preventDefault();
+
+            const name = document.getElementById("product-name").value.trim();
+            const price = document.getElementById("product-price").value;
+            const quantity = document.getElementById("product-quantity").value;
+            const reference = document.getElementById("product-reference").value.trim();
+            const row = document.createElement("tr");
+
+            [name, price].forEach((value) => {
+                const cell = document.createElement("td");
+                cell.textContent = value;
+                row.appendChild(cell);
+            });
+
+            const quantityCell = document.createElement("td");
+            addQuantityControls(quantityCell, quantity);
+            row.appendChild(quantityCell);
+
+            const referenceCell = document.createElement("td");
+            referenceCell.textContent = reference;
+            row.appendChild(referenceCell);
+
+            const actionCell = document.createElement("td");
+            row.appendChild(actionCell);
+            addDeleteButton(row);
+            productRows.appendChild(row);
+            filterProducts();
+            productForm.reset();
+            document.getElementById("product-name").focus();
+        });
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1
+      <script>
+        // Attend que le HTML soit chargé avant de récupérer les éléments de la page.
+        document.addEventListener("DOMContentLoaded", () => {
+            const form = document.getElementById("product-form");
+            const productRows = document.getElementById("product-rows");
+            const searchInput = document.getElementById("product-search");
+            // Une quantité de 1 à 5 est considérée comme un stock faible.
+            const lowStockThreshold = 5;
+
+            // Met à jour la couleur de la quantité selon le niveau de stock.
+            const updateStockStatus = (cell, quantity) => {
+                // Retire d'abord l'ancien état pour appliquer uniquement la bonne couleur.
+                cell.classList.remove("stock-empty", "stock-low");
+
+                if (quantity === 0) {
+                    cell.classList.add("stock-empty");
+                } else if (quantity <= lowStockThreshold) {
+                    cell.classList.add("stock-low");
+                }
+            };
+
+            // Remplace le nombre dans une cellule par les boutons - et +.
+            const addQuantityControls = (cell, initialValue) => {
+                const quantity = Number(initialValue);
+                // Refuse les quantités négatives ou non entières avant de créer les contrôles.
+                if (!Number.isInteger(quantity) || quantity < 0) {
+                    throw new Error("La quantité doit être un entier positif ou nul.");
+                }
+
+                // Remplace le contenu initial de la cellule par les contrôles interactifs.
+                cell.textContent = "";
+                const controls = document.createElement("span");
+                controls.className = "quantity-controls";
+
+                // Le bouton moins est désactivé lorsque le stock est déjà à zéro.
+                const decreaseButton = document.createElement("button");
+                decreaseButton.type = "button";
+                decreaseButton.className = "quantity-button";
+                decreaseButton.dataset.quantityChange = "-1";
+                decreaseButton.textContent = "-";
+                decreaseButton.setAttribute("aria-label", "Diminuer la quantité");
+                decreaseButton.disabled = quantity === 0;
+
+                const value = document.createElement("span");
+                value.className = "quantity-value";
+                value.textContent = String(quantity);
+                // Applique immédiatement la couleur adaptée au stock initial.
+                updateStockStatus(cell, quantity);
+
+                const increaseButton = document.createElement("button");
+                increaseButton.type = "button";
+                increaseButton.className = "quantity-button";
+                increaseButton.dataset.quantityChange = "1";
+                increaseButton.textContent = "+";
+                increaseButton.setAttribute("aria-label", "Augmenter la quantité");
+
+                controls.append(decreaseButton, value, increaseButton);
+                cell.appendChild(controls);
+            };
+
+            // Ajoute le bouton de suppression à la fin de chaque ligne produit.
+            const addDeleteButton = (row) => {
+                const cell = document.createElement("td");
+                const button = document.createElement("button");
+                button.type = "button";
+                button.className = "delete-button";
+                button.textContent = "Supprimer";
+                button.setAttribute("aria-label", `Supprimer ${row.cells[0].textContent}`);
+                cell.appendChild(button);
+                row.appendChild(cell);
+            };
+
+            productRows.querySelectorAll("tr").forEach(addDeleteButton);
+
+            // Gère les boutons de quantité et de suppression, y compris sur les nouvelles lignes.
+            productRows.addEventListener("click", (event) => {
+                // Vérifie que le clic vient bien d'un élément HTML.
+                if (!(event.target instanceof Element)) {
+                    return;
+                }
+
+                // Identifie un bouton + ou - et met à jour la quantité sans recharger la page.
+                const quantityButton = event.target.closest("[data-quantity-change]");
+                if (quantityButton) {
+                    const quantityCell = quantityButton.closest("td");
+                    const quantityValue = quantityCell.querySelector(".quantity-value");
+                    const nextQuantity = Number(quantityValue.textContent)
+                        + Number(quantityButton.dataset.quantityChange);
+
+                    if (nextQuantity >= 0) {
+                        quantityValue.textContent = String(nextQuantity);
+                        quantityCell.querySelector('[data-quantity-change="-1"]').disabled = nextQuantity === 0;
+                        updateStockStatus(quantityCell, nextQuantity);
+                    }
+                    return;
+                }
+
+                // Demande confirmation avant de retirer la ligne du tableau.
+                const button = event.target.closest(".delete-button");
+                if (!button) {
+                    return;
+                }
+
+                const row = button.closest("tr");
+                const productName = row.cells[0].textContent;
+                if (window.confirm(`Voulez-vous supprimer le produit « ${productName} » ?`)) {
+                    row.remove();
+                }
+            });
+
+            // Initialise les contrôles de quantité et les couleurs des produits déjà présents.
+            productRows.querySelectorAll("tr").forEach((row) => {
+                addQuantityControls(row.cells[2], row.cells[2].textContent.trim());
+            });
+
+            // Ignore les majuscules et les accents pendant la recherche.
+            const normalizeText = (text) => text
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "");
+
+            // Masque les lignes dont le nom ne correspond pas à la recherche.
+            const filterProducts = () => {
+                const searchTerm = normalizeText(searchInput.value.trim());
+
+                productRows.querySelectorAll("tr").forEach((row) => {
+                    const productName = normalizeText(row.cells[0].textContent);
+                    // N'affiche que les produits dont le nom contient le texte recherché.
+                    row.hidden = !productName.includes(searchTerm);
+                });
+            };
+
+            searchInput.addEventListener("input", filterProducts);
+
+            // Ajoute le produit au tableau sans recharger la page.
+            form.addEventListener("submit", (event) => {
+                event.preventDefault();
+
+                const name = document.getElementById("product-name").value.trim();
+                const price = document.getElementById("product-price").value;
+                const quantity = document.getElementById("product-quantity").value;
+                const reference = document.getElementById("product-reference").value.trim();
+
+                // Construit une nouvelle ligne en créant chaque cellule séparément.
+                const row = document.createElement("tr");
+                [name, price].forEach((value) => {
+                    const cell = document.createElement("td");
+                    cell.textContent = value;
+                    row.appendChild(cell);
+                });
+                const quantityCell = document.createElement("td");
+                addQuantityControls(quantityCell, quantity);
+                row.appendChild(quantityCell);
+
+                const referenceCell = document.createElement("td");
+                referenceCell.textContent = reference;
+                row.appendChild(referenceCell);
+                addDeleteButton(row);
+                productRows.appendChild(row);
+                // Applique aussi le filtre actuel au produit qui vient d'être ajouté.
+                filterProducts();
+
+                // Vide le formulaire et replace le curseur sur le champ du nom.
+                form.reset();
+                document.getElementById("product-name").focus();
+            });
+        });
+    </script>
+</head>
+
+<body>
+    <!-- Titre principal de la page -->
+    <h1>Bienvenue chez FITS</h1>
+
+    <!-- Sous-titre de la page -->
+    <h2>Gestion de la boutique</h2>
+
+    <!-- Titre du tableau des produits -->
+    <h3>Stock de la boutique FITS</h3>
+
+    <!-- Recherche des produits par nom, filtrée au fur et à mesure de la saisie -->
+    <label for="product-search">Rechercher un produit :</label>
+    <input id="product-search" type="search" placeholder="Ex : routeur">
+
+    <!-- Tableau qui présente les informations et les commandes de chaque produit -->
+    <table border="1">
+        <!-- En-têtes des colonnes du tableau -->
+        <thead>
+        <tr>
+            <th>Produit</th>
+            <th>Prix (MRU)</th>
+            <th>Quantité</th>
+            <th>Référence</th>
+            <th>Action</th>
+        </tr>
+        </thead>
+
+        <!-- Lignes initiales du stock ; le JavaScript ajoute les boutons de quantité et de suppression -->
+        <tbody id="product-rows">
+        <!-- Produit 1 -->
+        <tr>
+            <td>Camera de surveillance</td>
+            <td>1500</td>
+            <td>10</td>
+            <td></td>
+        </tr>
+
+        <!-- Produit 2 -->
+        <tr>
+            <td>Routeur Wi-fi</td>
+            <td>800</td>
+            <td>5</td>
+            <td></td>
+        </tr>
+
+        <!-- Produit 3 -->
+        <tr>
+            <td>Câble réseau</td>
+            <td>100</td>
+            <td>20</td>
+            <td></td>
+        </tr>
+
+        <!-- Produit 4 -->
+        <tr>
+            <td>Switch réseau</td>
+            <td>1200</td>
+            <td>4</td>
+            <td></td>
+        </tr>
+
+        <!-- Produit 5 -->
+        <tr>
+            <td>Clé USB</td>
+            <td>200</td>
+            <td>15</td>
+            <td></td>
+        </tr>
+
+        <!-- Produit 6 -->
+        <tr>
+            <td>Ordinateur portable</td>
+            <td>9000</td>
+            <td>50</td>
+            <td></td>
+        </tr>
+
+        <!-- Produit 7 -->
+        <tr>
+            <td>Disque dur</td>
+            <td>2500</td>
+            <td>30</td>
+            <td></td>
+        </tr>
+        </tbody>
+    </table>
+
+    <!-- Formulaire permettant d'ajouter un produit au stock sans recharger la page -->
+    <h3>Ajouter un nouveau produit</h3>
+
+    <!-- Formulaire pour ajouter un produit -->
+    <form id="product-form">
+        <!-- Champ du nom du produit -->
+        <label for="product-name">Nom du produit :</label>
+        <input id="product-name" type="text" placeholder="Ex : Caméra IP" required>
+        <br><br>
+
+        <!-- Champ du prix -->
+        <label for="product-price">Prix (MRU) :</label>
+        <input id="product-price" type="number" placeholder="Ex : 1500" min="0" step="1" required>
+        <br><br>
+
+        <!-- Champ de la quantité -->
+        <label for="product-quantity">Quantité :</label>
+        <input id="product-quantity" type="number" placeholder="Ex : 10" min="0" step="1" required>
+        <br><br>
+
+        <!-- Champ de la référence -->
+        <label for="product-reference">Référence :</label>
+        <input id="product-reference" type="text" placeholder="Ex : REF-001">
+        <br><br>
+
+        <!-- Bouton pour ajouter -->
+        <button type="submit">Ajouter le produit</button>
+                                                              </form>
+                                                              <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const form = document.getElementById("product-form");
+            const productRows = document.getElementById("product-rows");
+            const searchInput = document.getElementById("product-search");
+            const lowStockThreshold = 5;
+
+            const updateStockStatus = (cell, quantity) => {
+                cell.classList.remove("stock-empty", "stock-low");
+
+                if (quantity === 0) {
+                    cell.classList.add("stock-empty");
+                } else if (quantity <= lowStockThreshold) {
+                    cell.classList.add("stock-low");
+                }
+            };
+
+            const addQuantityControls = (cell, initialValue) => {
+                const quantity = Number(initialValue);
+                if (!Number.isInteger(quantity) || quantity < 0) {
+                    throw new Error("La quantité doit être un entier positif ou nul.");
+                }
+
+                cell.textContent = "";
+                const controls = document.createElement("span");
+                controls.className = "quantity-controls";
+
+                const decreaseButton = document.createElement("button");
+                decreaseButton.type = "button";
+                decreaseButton.className = "quantity-button";
+                decreaseButton.dataset.quantityChange = "-1";
+                decreaseButton.textContent = "-";
+                decreaseButton.setAttribute("aria-label", "Diminuer la quantité");
+                decreaseButton.disabled = quantity === 0;
+
+                const value = document.createElement("span");
+                value.className = "quantity-value";
+                value.textContent = String(quantity);
+                updateStockStatus(cell, quantity);
+
+                const increaseButton = document.createElement("button");
+                increaseButton.type = "button";
+                increaseButton.className = "quantity-button";
+                increaseButton.dataset.quantityChange = "1";
+                increaseButton.textContent = "+";
+                increaseButton.setAttribute("aria-label", "Augmenter la quantité");
+
+                controls.append(decreaseButton, value, increaseButton);
+                cell.appendChild(controls);
+            };
+
+            const addDeleteButton = (row) => {
+                const cell = document.createElement("td");
+                const button = document.createElement("button");
+                button.type = "button";
+                button.className = "delete-button";
+                button.textContent = "Supprimer";
+                button.setAttribute("aria-label", `Supprimer ${row.cells[0].textContent}`);
+                cell.appendChild(button);
+                row.appendChild(cell);
+            };
+
+            productRows.querySelectorAll("tr").forEach(addDeleteButton);
+
+            productRows.addEventListener("click", (event) => {
+                if (!(event.target instanceof Element)) {
+                    return;
+                }
+
+                const quantityButton = event.target.closest("[data-quantity-change]");
+                if (quantityButton) {
+                    const quantityCell = quantityButton.closest("td");
+                    const quantityValue = quantityCell.querySelector(".quantity-value");
+                    const nextQuantity = Number(quantityValue.textContent)
+                        + Number(quantityButton.dataset.quantityChange);
+
+                    if (nextQuantity >= 0) {
+                        quantityValue.textContent = String(nextQuantity);
+                        quantityCell.querySelector('[data-quantity-change="-1"]').disabled = nextQuantity === 0;
+                        updateStockStatus(quantityCell, nextQuantity);
+                    }
+                    return;
+                }
+
+                const button = event.target.closest(".delete-button");
+                if (!button) {
+                    return;
+                }
+
+                const row = button.closest("tr");
+                const productName = row.cells[0].textContent;
+                if (window.confirm(`Voulez-vous supprimer le produit « ${productName} » ?`)) {
+                    row.remove();
+                }
+            });
+
+            productRows.querySelectorAll("tr").forEach((row) => {
+                addQuantityControls(row.cells[2], row.cells[2].textContent.trim());
+            });
+
+            const normalizeText = (text) => text
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "");
+
+            const filterProducts = () => {
+                const searchTerm = normalizeText(searchInput.value.trim());
+
+                productRows.querySelectorAll("tr").forEach((row) => {
+                    const productName = normalizeText(row.cells[0].textContent);
+                    row.hidden = !productName.includes(searchTerm);
+                });
+            };
+
+            searchInput.addEventListener("input", filterProducts);
+
+            form.addEventListener("submit", (event) => {
+                event.preventDefault();
+
+                const name = document.getElementById("product-name").value.trim();
+                const price = document.getElementById("product-price").value;
+                const quantity = document.getElementById("product-quantity").value;
+                const reference = document.getElementById("product-reference").value.trim();
+
+                const row = document.createElement("tr");
+                [name, price].forEach((value) => {
+                    const cell = document.createElement("td");
+                    cell.textContent = value;
+                    row.appendChild(cell);
+                });
+                const quantityCell = document.createElement("td");
+                addQuantityControls(quantityCell, quantity);
+                row.appendChild(quantityCell);
+
+                const referenceCell = document.createElement("td");
+                referenceCell.textContent = reference;
+                row.appendChild(referenceCell);
+                addDeleteButton(row);
+                productRows.appendChild(row);
+                filterProducts();
+
+                form.reset();
+                document.getElementById("product-name").focus
+            });
+        });
+                                                                
+   <script>
+        // Sélectionne le bouton d'ajout de produit
+        const addButton = document.querySelector('button');
+
+        // Ajoute un événement au clic sur le bouton
+        addButton.addEventListener('click', () => {
+            // Récupère les valeurs des champs du formulaire
+            const productName = document.querySelector('input[type="text"]').value;
+            const productPrice = document.querySelector('input[type="number"]').value;
+            const productQuantity = document.querySelectorAll('input[type="number"]')[1].value;
+
+            // Vérifie si les champs sont remplis
+            if (productName && productPrice && productQuantity) {
+                // Crée une nouvelle ligne dans le tableau
+                const table = document.querySelector('table');
+                const newRow = table.insertRow();
+
+                // Insère les cellules dans la nouvelle ligne
+                const cell1 = newRow.insertCell(0);
+                const cell2 = newRow.insertCell(1);
+                const cell3 = newRow.insertCell(2);
+                const cell4 = newRow.insertCell(3);
+
+                // Remplit les cellules avec les valeurs du formulaire
+                cell1.textContent = productName;
+                cell2.textContent = productPrice;
+                cell3.textContent = productQuantity;
+                cell4.textContent = ''; // Référence vide pour l'instant
+
+                // Réinitialise le formulaire après l'ajout
+                document.querySelector('form').reset();
+            } else {
+                alert('Veuillez remplir tous les champs avant d\'ajouter un produit.');
+            }
+        });
+    </script>                                                             
