@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FITS - Finally Stage 2026 PRO</title>
+<style>
+  body { font-family: Arial, sans-serif; background: #f8f9fa; margin: 0; padding: 20px; }
+  h1 { text-align: center; color: #0d6efd; }
+  .container { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+  table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+  th, td { padding: 12px; text-align: left; border: 1px solid black; }
+  th { background-color: #add8e6; color: black; }
+  input { padding: 8px; border-radius: 6px; border: 1px solid #ccc; }
+  button { background-color: #0d6efd; color: white; padding: 10px 15px; border: none; cursor: pointer; border-radius: 6px; font-weight: bold; }
+  .delete-button { background-color: #dc3545; }
+  .quantity-value { background: #ffffff; color: #000; font-weight: bold; padding: 6px 12px; border: 2px solid #0d6efd; border-radius: 8px; display: inline-block; }
+  .quantity-button { background: #ffc107 !important; color: black !important; width: 35px; height: 35px; border-radius: 50%; font-weight: bold; }
+  @keyframes ampoule-clignote { 0% { opacity: 1; box-shadow: 0 0 5px #ffc107; } 50% { opacity: 0.7; transform: scale(1.05); box-shadow: 0 0 20px #ffc107, 0 0 30px #ffeb3b; background: #fff176; } 100% { opacity: 1; } }
+  .stock-low { animation: ampoule-clignote 0.8s infinite !important; background: #fff3cd !important; color: #856404 !important; }
+  .stock-empty { animation: ampoule-clignote 0.5s infinite !important; background: #f8d7da !important; color: red !important; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>💡 FITS - Application PRO avec Base de Données 💡</h1>
+  <h2 style="text-align:center">Le stock reste même si tu fermes la page</h2>
+  <label>🔍 Rechercher :</label> <input id="product-search" type="text" placeholder="Ex : Routeur">
+  <button id="reset-btn" style="background:gray; float:right">Réinitialiser stock</button>
+  <table><thead><tr><th>Produit</th><th>Prix (MRU)</th><th>Quantité</th><th>Référence</th><th>Action</th></tr></thead><tbody id="product-rows"></tbody></table>
+  <h3>Ajouter un nouveau produit</h3>
+  <form id="product-form"><p>Nom : <input id="product-name" type="text" required></p><p>Prix : <input id="product-price" type="number" required></p><p>Quantité : <input id="product-quantity" type="number" required></p><p>Référence : <input id="product-reference" type="text" required></p><button type="submit">➕ Ajouter et Sauvegarder</button></form>
+</div>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const productRows = document.getElementById("product-rows");
+    const STORAGE_KEY = "fits-finally-stage-db";
+    const defaultProducts = [
+      {name:"Caméra de surveillance", price:1500, quantity:10, ref:"CAM-001"},
+      {name:"Routeur Wi-Fi", price:800, quantity:5, ref:"ROUT-002"},
+      {name:"Cable réseau", price:100, quantity:20, ref:"CAB-003"},
+      {name:"Switch réseau", price:1200, quantity:4, ref:"SWI-004"},
+      {name:"Clé USB", price:200, quantity:15, ref:"USB-005"},
+      {name:"Ordinateur portable", price:9000, quantity:50, ref:"PC-006"},
+      {name:"Disque dur", price:2500, quantity:30, ref:"DD-007"}
+    ];
+    const getProducts = () => { const s = localStorage.getItem(STORAGE_KEY); return s ? JSON.parse(s) : defaultProducts; };
+    const saveProducts = (products) => localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
+    let products = getProducts();
+
+    const updateStockStatus = (cell, quantity) => {
+        cell.classList.remove("stock-empty", "stock-low");
+        if (quantity === 0) cell.classList.add("stock-empty");
+        else if (quantity <= 5) cell.classList.add("stock-low");
+    };
+    const render = () => {
+        productRows.innerHTML = "";
+        products.forEach((p, index) => {
+            const row = document.createElement("tr");
+            row.innerHTML = `<td>${p.name}</td><td>${p.price}</td><td></td><td>${p.ref}</td><td><button class="delete-button" data-index="${index}">Supprimer</button></td>`;
+            const qCell = row.cells[2];
+            qCell.innerHTML = `<button class="quantity-button" data-i="${index}" data-change="-1">-</button> <span class="quantity-value">${p.quantity}</span> <button class="quantity-button" data-i="${index}" data-change="1">+</button>`;
+            updateStockStatus(qCell, p.quantity);
+            if(qCell.querySelector('[data-change="-1"]')) qCell.querySelector('[data-change="-1"]').disabled = p.quantity===0;
+            productRows.appendChild(row);
+        });
+        saveProducts(products);
+    };
+    productRows.addEventListener("click", (e) => {
+        const qBtn = e.target.closest("[data-change]");
+        if(qBtn){ const i = Number(qBtn.dataset.i); products[i].quantity = Math.max(0, products[i].quantity + Number(qBtn.dataset.change)); render(); return; }
+        const dBtn = e.target.closest(".delete-button");
+        if(dBtn){ if(confirm("Supprimer ?")){ products.splice(Number(dBtn.dataset.index),1); render(); } }
+    });
+    document.getElementById("product-form").addEventListener("submit", (e) => {
+        e.preventDefault();
+        products.push({ name: document.getElementById("product-name").value, price: document.getElementById("product-price").value, quantity: Number(document.getElementById("product-quantity").value), ref: document.getElementById("product-reference").value });
+        e.target.reset(); render();
+    });
+    document.getElementById("product-search").addEventListener("input", (e) => {
+        const term = e.target.value.toLowerCase();
+        productRows.querySelectorAll("tr").forEach(row => { row.hidden = !row.cells[0].textContent.toLowerCase().includes(term); });
+    });
+    document.getElementById("reset-btn").addEventListener("click", () => { if(confirm("Remettre le stock d'origine ?")){ localStorage.removeItem(STORAGE_KEY); products = defaultProducts; render(); } });
+    render();
+});
+</script>
+</body>
+                         </html>
